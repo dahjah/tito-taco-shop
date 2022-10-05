@@ -9,3 +9,5 @@ __pycache__/
 
 # Local settings file
 core/settings/local.py
+
+google-credentials.json
