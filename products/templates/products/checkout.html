@@ -10,7 +10,7 @@
                 <div class="col-12 col-md-4 product center">
                     <div class="row">
                         <div class="col-12">
-                            <img class="img-fluid prod-pic-home" src="{% static 'products/amazon-gift-card.png' %}"
+                            <img class="img-fluid prod-pic-home" src="{{ product.image.url }}"
                                  alt="gift card pic">
                         </div>
                     </div>
@@ -35,7 +35,7 @@
     </div>
     <div class="col-1">
         <div class="row">
-            <button class="btn btn-primary fa-align-right" type="button">
+            <button class="btn btn-primary fa-align-right" type="button"  onclick="window.location.href='{% url 'checkout-button' product.id %}'">
                 <a class="add-to-plate-btn" href="{% url 'checkout-button' product.id %}">
                     Order
                 </a>

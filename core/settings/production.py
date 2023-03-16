@@ -4,6 +4,7 @@ Django production settings for core project
 import os
 import dj_database_url
 import json
+from google.oauth2 import service_account
 
 DEBUG = True if (os.environ.get("DEBUG", "true").lower() == "true") else False
 
@@ -20,14 +21,8 @@ TACO_DAILY_LIMIT = os.environ.get('taco_daily_limit')
 DEFAULT_FILE_STORAGE = os.environ.get('DEFAULT_FILE_STORAGE')
 GS_BUCKET_NAME = os.environ.get('GS_BUCKET_NAME')
 STATICFILES_STORAGE = os.environ.get('STATICFILES_STORAGE')
-
-# writing google credentials to file
-GOOGLE_CREDENTIALS = os.environ.get('GOOGLE_CREDENTIALS')
-GOOGLE_APPLICATION_CREDENTIALS = os.environ.get(
-    'GOOGLE_APPLICATION_CREDENTIALS')
-if GOOGLE_CREDENTIALS and GOOGLE_APPLICATION_CREDENTIALS:
-    with open(GOOGLE_APPLICATION_CREDENTIALS, 'w') as fd:
-        fd.write(GOOGLE_CREDENTIALS)
+TITO_GCS_CREDS = os.environ.get("GOOGLE_CREDENTIALS")
+GS_CREDENTIALS = service_account.Credentials.from_service_account_info(TITO_GCS_CREDS)
 
 
 # Databases
