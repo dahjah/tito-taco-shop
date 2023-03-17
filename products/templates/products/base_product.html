@@ -33,11 +33,19 @@
     <div class="col-12 col-md-6">
         <div class="row">
             <div class="d-grid gap-2 col-md-6">
+                {% if user.is_authenticated %}
                 <button type="button" class="btn btn-dark btn-primary" onclick="window.location.href='{% url 'checkout-page' product.id %}'">
                     <a class="add-to-plate-btn" href="{% url 'checkout-page' product.id %}">
                         Add to Plate
                     </a>
                 </button>
+                {% else %}
+                <button type="button" class="btn btn-dark btn-primary" onclick="window.location.href='{% url 'checkout-page' product.id %}'">
+                    <a class="add-to-plate-btn" href="{% url 'cas_ng_login' %}">
+                        Login to Continue
+                    </a>
+                </button>
+                {% endif %}
             </div>
             <div class="col-md-6">
             </div>

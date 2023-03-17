@@ -9,7 +9,7 @@
     </head>
     <body>
         <div class="container-fluid">
-            {% if user.is_authenticated %}
+            
                 <div class="row" id="top-row">
                     <div class="col">
                             <a href="{% url 'home-page' %}">
@@ -20,6 +20,7 @@
                         
                     </div>
                     <div class="col">
+                        {% if user.is_authenticated %}
                         <dvi class="row marg-t-40">
                             <div class="col" id="balance-amount">
                                 <p>Balance: {{ taco_balance }} <img class="small-taco" src="{% static 'products/taco.png' %}" alt="taco picture"></p>
@@ -28,25 +29,8 @@
                                 <a href="{% url 'cas_ng_logout' %}">Logout</a>
                             </div>
                         </dvi>
-                    </div>
-                </div>
-                    {% block content %}
-                    {% endblock %}
-                    {% block product %}
-                    {% endblock %}
-                
-            {% else %}
-                <div class="row" id="top-row">
-                    <div class="col">
-                        <a href="{% url 'home-page' %}">
-                            <img class="img-fluid" src="{% static 'products/titos-taco-shop-blue.webp' %}"/>
-                        </a>
-                    </div>
-                    <div class="col">
-                        
-                    </div>
-                    <div class="col">
-                        <div class="row">
+                        {% else %}
+                        <div class="row marg-t-40">
                             <div class="col" id="balance-amount">
                                 <p>Login to view your balance</p>
                             </div>
@@ -54,14 +38,15 @@
                                 <a href="{% url 'cas_ng_login' %}">Login</a>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
-                <div class="row">
-                    <div class="col center">
-                        <h1><a href="{% url 'cas_ng_login' %}">LOGIN TO ENTER TITO'S TACOS!</a></h1>
-                    </div>
-                </div>
-            {% endif %}
+                    {% block content %}
+                    {% endblock %}
+                    {% block product %}
+                    {% endblock %}
+                
+
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa" crossorigin="anonymous"></script>
     </body>
 </html>
