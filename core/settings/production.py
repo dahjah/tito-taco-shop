@@ -7,6 +7,7 @@ import json
 from google.oauth2 import service_account
 
 DEBUG = True if (os.environ.get("DEBUG", "true").lower() == "true") else False
+CSRF_TRUSTED_ORIGINS = json.loads(os.environ.get('CSRF_TRUSTED_ORIGINS'))
 
 SLACK_CLIENT_ID = os.environ.get('SLACK_CLIENT_ID')
 SLACK_CLIENT_SECRET = os.environ.get('SLACK_CLIENT_SECRET')

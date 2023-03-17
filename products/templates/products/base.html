@@ -12,38 +12,35 @@
             {% if user.is_authenticated %}
                 <div class="row" id="top-row">
                     <div class="col">
-                        <p id="title">
                             <a href="{% url 'home-page' %}">
-                                TITO's Taco Shop
+                            <img class="img-fluid" src="{% static 'products/titos-taco-shop-blue.webp' %}"/>
                             </a>
-                        </p>
                     </div>
                     <div class="col">
                         
                     </div>
                     <div class="col">
-                        <dvi class="row">
+                        <dvi class="row marg-t-40">
                             <div class="col" id="balance-amount">
-                                <p>{{ taco_balance }}</p>
+                                <p>Balance: {{ taco_balance }} <img class="small-taco" src="{% static 'products/taco.png' %}" alt="taco picture"></p>
                             </div>
                             <div class="col vert-horiz-center">
                                 <a href="{% url 'cas_ng_logout' %}">Logout</a>
                             </div>
                         </dvi>
                     </div>
+                </div>
                     {% block content %}
                     {% endblock %}
                     {% block product %}
                     {% endblock %}
-                </div>
+                
             {% else %}
                 <div class="row" id="top-row">
                     <div class="col">
-                        <p id="title">
-                            <a href="{% url 'home-page' %}">
-                                TITO's Taco Shop
-                            </a>
-                        </p>
+                        <a href="{% url 'home-page' %}">
+                            <img class="img-fluid" src="{% static 'products/titos-taco-shop-blue.webp' %}"/>
+                        </a>
                     </div>
                     <div class="col">
                         
