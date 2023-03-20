@@ -16,21 +16,21 @@
                             <img class="img-fluid" src="{% static 'products/titos-taco-shop-blue.webp' %}"/>
                             </a>
                     </div>
-                    <div class="col">
+                    <div class="col m-none">
                         
                     </div>
                     <div class="col">
                         {% if user.is_authenticated %}
-                        <dvi class="row marg-t-40">
+                        <dvi class="row marg-t-40 m-col-float-right">
                             <div class="col" id="balance-amount">
-                                <p>Balance: {{ taco_balance }} <img class="small-taco" src="{% static 'products/taco.png' %}" alt="taco picture"></p>
+                                <p>Balance: <span class="text-nowrap">{{ taco_balance }} <img class="small-taco" src="{% static 'products/taco.png' %}" alt="taco picture"></span></p>
                             </div>
                             <div class="col vert-horiz-center">
                                 <a href="{% url 'cas_ng_logout' %}">Logout</a>
                             </div>
                         </dvi>
                         {% else %}
-                        <div class="row marg-t-40">
+                        <div class="row marg-t-40 m-col-float-right">
                             <div class="col" id="balance-amount">
                                 <p>Login to view your balance</p>
                             </div>

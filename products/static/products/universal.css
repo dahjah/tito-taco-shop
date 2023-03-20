@@ -60,7 +60,25 @@ body {
     }
 }
 
+@media screen and (max-width: 1200px) {
+    .m-none {
+        display:none;
+    }
+}
+
+@media screen and (max-width: 1200px) {
+    .m-col-float-right {
+        float:right;
+    }
+}
+
 .small-taco {
     width: 20%;
     object-fit: fill;
+}
+@media screen and (max-width: 745px) {
+    .small-taco {
+        width: 30%;
+        /* height: 100%; */
+    }
 }
