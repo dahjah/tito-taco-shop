@@ -6,7 +6,7 @@ urlpatterns = [
     path('', views.index),
     path('slack/oauth/', views.slack_oauth),
     path('slack/event/', views.slack_event),
-    path('slack/command/', views.slack_command),
-    path('mattermost/slash/', views.mattermost_slash),
+    path('slack/command/', views.slash_command),
+    path('mattermost/slash/', views.slash_command),
     path('mattermost/register/', views.mattermost_register),
 ]

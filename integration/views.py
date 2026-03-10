@@ -1,3 +1,4 @@
+from django.db import models
 from django.shortcuts import render
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
@@ -52,40 +53,23 @@ def slack_event(request):
     return HttpResponse(status=405)
 
 @csrf_exempt
-def slack_command(request):
+def slash_command(request):
     if request.method == 'POST':
         team_id = request.POST.get('team_id')
-        if team_id:
-            team = Team.objects.filter(team_id=team_id, chat_type='slack').first()
-            if team:
-                client = get_client(team)
-                if client.validate_token(request):
-                    parsed = client.parse_slash_command(request.POST)
-                    if parsed:
-                        text, sender = parsed
-                        response_text = client.handle_slash_command(text, sender, team)
-                        if response_text:
-                            return JsonResponse({"response_type": "ephemeral", "text": response_text})
-        return HttpResponse(status=200)
-    return HttpResponse(status=405)
-
-@csrf_exempt
-def mattermost_slash(request):
-    if request.method == 'POST':
-        team_id = request.POST.get('team_id') # Usually the MM server identifier or team string
-        # Typically the plugin will send some identifying token we can look up
-        bot_token = request.POST.get('token')
-        if bot_token:
-            team = Team.objects.filter(bot_access_token=bot_token, chat_type='mattermost').first()
-            if team:
-                client = get_client(team)
-                if client.validate_token(request):
-                    parsed = client.parse_slash_command(request.POST)
-                    if parsed:
-                        text, sender = parsed
-                        response_text = client.handle_slash_command(text, sender, team)
-                        if response_text:
-                            return JsonResponse({"response_type": "ephemeral", "text": response_text})
+        token = request.POST.get('token')
+        
+        # Look up team by ID (Slack) or token (Mattermost)
+        team = Team.objects.filter(models.Q(team_id=team_id) | models.Q(bot_access_token=token)).first()
+        
+        if team:
+            client = get_client(team)
+            if client.validate_token(request):
+                parsed = client.parse_slash_command(request.POST)
+                if parsed:
+                    text, sender = parsed
+                    response_text = client.handle_slash_command(text, sender, team)
+                    if response_text:
+                        return JsonResponse({"response_type": "ephemeral", "text": response_text})
         return HttpResponse(status=200)
     return HttpResponse(status=405)
 
