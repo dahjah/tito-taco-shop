@@ -1,14 +1,15 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 
-from ledger.models import TacoBank
+from ledger.models import TacoBank, TacoLedger
 from products.models import Product, ProductAttributeStock
-from ledger.tasks import redeem_tacos, TacoBank
-from integration.clients.slack import Client as Slack
+from ledger.tasks import redeem_tacos
+from integration.clients import get_client
 from integration.models import Team
 from django.conf import settings
 from django.contrib import messages
 from .forms import ProductSizeForm
+
 
 
 def product(request, product_id):
@@ -59,8 +60,8 @@ def checkout(request, product_id):
 def checkout_button(request, product_id):
     print('CHECKOUT PRESSED')
     product = Product.objects.filter(id=product_id).first()
-    slack_client = Slack(settings.TEAM_ID, settings.TEAM_NAME, settings.SLACK_BOT_TOKEN)
     user = request.user
+    client = get_client(user.team_user.team)
     taco_bank = TacoBank.objects.filter(user=user)
     total_tacos = taco_bank.first().total_tacos
     purchased_size = request.GET.get('size')
@@ -68,9 +69,9 @@ def checkout_button(request, product_id):
     if purchased_size:
         size = ProductAttributeStock.objects.get(id=purchased_size).attribute.value
     if total_tacos >= product.price:
-        redeem_tacos({"user_id": request.user.unique_id, "product_name": product.name, "amount": product.price})
-        slack_client.order_information(user.unique_id, settings.ORDER_CHANNEL, product.name, size)
-        slack_client.receipt(user.unique_id, product.name, product.price, total_tacos-product.price)
+        redeem_tacos({"user_id": request.user.unique_id, "product_name": product.name, "amount": product.price, "receiver_id": settings.SLACK_BOT_ID, "tacos": product.price, "giver_id": request.user.unique_id}, team=user.team_user.team)
+        client.order_information(user.unique_id, settings.ORDER_CHANNEL, product.name, size)
+        client.receipt(user.unique_id, product.name, product.price, total_tacos-product.price)
     else:
         messages.error(request, "Insufficient taco balance.")
         return render(request, 'products/checkout.html', context={'product': product})

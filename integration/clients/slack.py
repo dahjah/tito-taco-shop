@@ -1,6 +1,10 @@
-from slack_sdk.rtm_v2 import RTMClient
+from slack_sdk.socket_mode import SocketModeClient
+from slack_sdk.web import WebClient
+from slack_sdk.socket_mode.response import SocketModeResponse
+from slack_sdk.socket_mode.request import SocketModeRequest
 from integration.models import TeamUser, Team
-from ledger.models import TacoLedger
+from integration.clients.base import BaseClient
+from ledger.models import TacoLedger, TacoBank
 from django.conf import settings
 from django.db.models import Sum
 from datetime import datetime
@@ -9,13 +13,19 @@ import re
 
 EMOJI = f":{settings.EMOJI_NAME}"
 
-
-class Client():
-    def __init__(self, team_id, team_name, bot_token):
-        self.team_id = team_id
-        self.team_name = team_name
-        self.rtm_client = RTMClient(token=bot_token)
-        self.client = self.rtm_client
+class Client(BaseClient):
+    def __init__(self, team_id=None, team_name=None, bot_token=None, team=None):
+        if team:
+            self.team = team
+            self.team_id = team.team_id
+            self.team_name = team.name
+            bot_token = team.bot_access_token
+        else:
+            self.team = None
+            self.team_id = team_id
+            self.team_name = team_name
+        self.web_client = WebClient(token=bot_token)
+        self.app_token = getattr(settings, 'SLACK_APP_TOKEN', None)
 
     def get_users(self, exclude_bots=True, include_deleted=False):
         res = self.client.users_list()
@@ -40,30 +50,38 @@ class Client():
                                   defaults={"email": user['profile']['email'],
                                             "details": user})
 
-    def award_message(self, sender, receiver, amount):
-        self.client.web_client.chat_postMessage(
-            channel=receiver,
+    def extract_mentions(self, text):
+        recipients = re.findall(r'<@([^>]*)>', text)
+        return recipients
+
+    def send_message(self, channel_id, text):
+        self.web_client.chat_postMessage(
+            channel=channel_id,
             as_user=True,
-            text=f"Congratulations! You have received {amount} " +
+            text=text
+        )
+
+    def award_message(self, sender, receiver, amount):
+        self.send_message(
+            receiver,
+            f"Congratulations! You have received {amount} " +
             f"taco{'s' if amount > 1 else ''} from " +
             f"<@{sender}>!"
         )
 
     def confirmation_message(self, sender, receiver, amount, remaining):
-        self.client.web_client.chat_postMessage(
-            channel=sender,
-            as_user=True,
-            text=f"You have sent {amount} " +
+        self.send_message(
+            sender,
+            f"You have sent {amount} " +
             f"taco{'s' if amount > 1 else ''} to " +
             f"<@{receiver}>! You have {remaining} " +
             f"taco{'s' if remaining > 1 else ''} remaining to give today."
         )
 
     def overdraft(self, sender, recipients, remaining, amount):
-        self.client.web_client.chat_postMessage(
-            channel=sender,
-            as_user=True,
-            text=f"I regret to inform you that your taco transaction of " +
+        self.send_message(
+            sender,
+            f"I regret to inform you that your taco transaction of " +
             f"{amount} taco{'s' if amount > 1 else ''} to " +
             ", ".join([f"<@{i}>" for i in recipients]) +
             f" is impossible as you have {remaining} left to give today, " +
@@ -71,67 +89,96 @@ class Client():
             "Please try again."
         )
 
-    def award_taco(self, message, sender, send_alert=True):
-        recipients = re.findall(r'<@([^>]*)>', message)
-        # Remove self-given tacos
-        while sender in recipients:
-            recipients.remove(sender)
-        multi_tacos = re.findall(f"(?<={EMOJI})(\d+)(?=:)", message)
-        num_tacos = message.count(f'{EMOJI}:') + sum(map(int, multi_tacos))
-        given_today = TacoLedger.objects.filter(
-            giver=sender,
-            timestamp__date=datetime.date(datetime.now())
-        ).aggregate(Sum('amount')).get('amount__sum', 0) or 0
-        tacos_remaining = (settings.TACO_DAILY_CAP -
-                           (given_today + (num_tacos * len(recipients))))
-        notif_settings = settings.get("NOTIFICATION_SETTINGS", {})
-        if tacos_remaining >= 0:
-            for recipient in set(recipients):
-                ledger = TacoLedger.objects.create(
-                    receiver=recipient,
-                    giver=sender,
-                    amount=num_tacos
-                )
-                if notif_settings.get("SEND_AWARD_MESSAGE", True):
-                    self.award_message(sender, recipient, num_tacos)
-                if notif_settings.get("SEND_RECEIPT_CONFIRMATION", True):
-                    self.confirmation_message(sender, recipient,
-                                              num_tacos, tacos_remaining)
-        else:
-            self.overdraft(sender, recipients, tacos_remaining, num_tacos)
+    def validate_token(self, request):
+        # Implement Slack signing secret validation here if desired
+        return True
 
-    def listen(self, client, event):
-        if not self.client:
-            self.client = client
-        print(event)
-        text = event.get('text', '')
-        sender = event.get('user', '')
-        if EMOJI in text and '<@' in text:
-            if text.count(EMOJI) == 1:
-                self.award_taco(text, sender)
-            else:
-                # Split on newlines so we don't double award
-                for message in text.split('\n'):
-                    self.award_taco(message, sender)
+    def parse_event(self, payload):
+        if 'event' in payload:
+            event = payload['event']
+            if event.get('type') == 'message' and not event.get('bot_id'):
+                text = event.get('text', '')
+                sender = event.get('user', '')
+                channel = event.get('channel', '')
+                if text and sender:
+                    # Backward compatibility for text leaderboard trigger
+                    if '@tito leaderboard' in text.lower():
+                        self.send_message(channel, self.format_leaderboard(self.team))
+                        return None
+                    return (text, sender, channel)
+        return None
+
+    def process_socket_mode_req(self, client: SocketModeClient, req: SocketModeRequest):
+        if req.type == "events_api":
+            response = SocketModeResponse(envelope_id=req.envelope_id)
+            client.send_socket_mode_response(response)
+            parsed = self.parse_event(req.payload)
+            if parsed and self.team:
+                text, sender, channel = parsed
+                self.handle_taco_message(text, sender, self.team, channel)
+        elif req.type == "slash_commands":
+            response = SocketModeResponse(envelope_id=req.envelope_id)
+            client.send_socket_mode_response(response)
+            payload = req.payload
+            command = payload.get("command", "")
+            if command == "/taco" and self.team:
+                text = payload.get("text", "")
+                sender = payload.get("user_id", "")
+                channel = payload.get("channel_id", "")
+                response_text = self.handle_slash_command(text, sender, self.team)
+                if response_text:
+                    self.send_message(channel, response_text)
+
+    def parse_slash_command(self, payload):
+        command = payload.get("command", "")
+        if command == "/taco":
+            text = payload.get("text", "")
+            sender = payload.get("user_id", "")
+            return (text, sender)
+        return None
+
+    def format_balance(self, sender_id, team):
+        given_today = TacoLedger.objects.filter(
+            giver=sender_id, team=team,
+            timestamp__date=datetime.now().date()
+        ).aggregate(Sum('amount')).get('amount__sum', 0) or 0
+        remaining = max(0, settings.TACO_DAILY_LIMIT - given_today)
+        user = TeamUser.objects.filter(team=team, user_team_id=sender_id).first()
+        if user:
+            bank = TacoBank.objects.filter(user=user.user).first()
+            if bank:
+                return f"You have {remaining} tacos left to give today. Your current balance is {bank.total_tacos} tacos."
+        return f"You have {remaining} tacos left to give today. You haven't received any tacos yet."
+
+    def format_leaderboard(self, team):
+        # Quick and dirty stub, implement actual leaderboard logic later if needed
+        return "Leaderboard coming soon!"
 
     def connect(self):
-        print("Connecting to Slack RTM")
-        self.rtm_client.on("message")(functools.partial(self.listen.__func__,
-                                                        self))
-        self.rtm_client.start()
+        print(f"Connecting to Slack Socket Mode for team {self.team_name}")
+        if not self.app_token:
+            print("ERROR: SLACK_APP_TOKEN not found in settings. Socket Mode requires an app-level token.")
+            return
+        socket_client = SocketModeClient(
+            app_token=self.app_token,
+            web_client=self.web_client
+        )
+        socket_client.socket_mode_request_listeners.append(self.process_socket_mode_req)
+        socket_client.connect()
+        import time
+        while True:
+            time.sleep(10)
 
     def order_information(self, sender, receiver, item, size):
-        self.client.web_client.chat_postMessage(
-            channel=receiver,
-            as_user=True,
-            text=f"New Tito Taco Shop order has been placed by <@{sender}>. They have purchased {item}. {'In Size: '+size if size else ''} Please arrange for them to receive this item. Thank you!"
+        self.send_message(
+            receiver,
+            f"New Tito Taco Shop order has been placed by <@{sender}>. They have purchased {item}. {'In Size: '+size if size else ''} Please arrange for them to receive this item. Thank you!"
         )
 
     def receipt(self, sender, item, cost, remaining):
-        self.client.web_client.chat_postMessage(
-            channel=sender,
-            as_user=True,
-            text=f"You have purchased {item} for {cost} " +
+        self.send_message(
+            sender,
+            f"You have purchased {item} for {cost} " +
             f"taco{'s' if cost > 1 else ''}." +
             f"You have {remaining} " +
             f"taco{'s' if remaining > 1 else ''} remaining in your balance."

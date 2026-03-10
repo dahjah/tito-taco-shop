@@ -1,0 +1,33 @@
+{
+    "id": "com.internal.titotacos",
+    "name": "Tito Taco Shop",
+    "description": "Integration with the Tito Taco Shop Django backend for emoji rewards and stats.",
+    "homepage_url": "https://github.com/monumetric/tito-taco-shop",
+    "support_url": "https://github.com/monumetric/tito-taco-shop/issues",
+    "release_notes_url": "https://github.com/monumetric/tito-taco-shop/releases",
+    "icon_path": "assets/icon.svg",
+    "version": "1.0.0",
+    "min_server_version": "5.37.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "darwin-amd64": "server/dist/plugin-darwin-amd64",
+            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+        },
+        "executable": ""
+    },
+    "settings_schema": {
+        "header": "Configure the Tito Taco Shop integration.",
+        "footer": "",
+        "settings": [
+            {
+                "key": "BackendURL",
+                "display_name": "Tito Backend URL",
+                "type": "text",
+                "help_text": "The full base URL of the Django backend (e.g. https://tito.example.com)",
+                "placeholder": "",
+                "default": ""
+            }
+        ]
+    }
+}

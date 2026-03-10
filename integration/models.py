@@ -7,11 +7,13 @@ User = get_user_model()
 
 class Team(models.Model):
     TEAM_TYPES = [("slack", "Slack"),
-                   ("discord", "Discord")]
+                  ("discord", "Discord"),
+                  ("mattermost", "Mattermost")]
     name = models.CharField(max_length=200)
     team_id = models.CharField(max_length=20)
     bot_user_id = models.CharField(max_length=20)
     bot_access_token = models.CharField(max_length=100)
+    details = models.JSONField(default=dict, blank=True)
     chat_type = models.CharField(max_length=25, choices=TEAM_TYPES)
 
     def __str__(self):

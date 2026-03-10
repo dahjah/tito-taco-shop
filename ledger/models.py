@@ -11,6 +11,7 @@ class TacoLedger(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     receiver = models.CharField(max_length=100)
     giver = models.CharField(max_length=100)
+    team = models.ForeignKey('integration.Team', null=True, blank=True, on_delete=models.SET_NULL)
     # details = models.JSONField(blank=True, null=True, default=dict)
 
     def __str__(self):
@@ -32,18 +33,34 @@ class TacoBank(models.Model):
         return f'Bank: {self.user}, amount: {self.total_tacos}'
 
     @property
+    def _team(self):
+        try:
+            return self.user.team_user.team
+        except AttributeError:
+            return None
+
+    @property
     def total_given(self):
-        amount = TacoLedger.objects.filter(~Q(receiver=settings.SLACK_BOT_ID), giver=self.user.unique_id).aggregate(Sum('amount'))
+        qs = TacoLedger.objects.filter(~Q(receiver=settings.SLACK_BOT_ID), giver=self.user.unique_id)
+        if self._team:
+            qs = qs.filter(team=self._team)
+        amount = qs.aggregate(Sum('amount'))
         return amount['amount__sum'] if amount.get('amount__sum') else 0
 
     @property
     def total_received(self):
-        amount = TacoLedger.objects.filter(receiver=self.user.unique_id).aggregate(Sum('amount'))
+        qs = TacoLedger.objects.filter(receiver=self.user.unique_id)
+        if self._team:
+            qs = qs.filter(team=self._team)
+        amount = qs.aggregate(Sum('amount'))
         return amount['amount__sum'] if amount.get('amount__sum') else 0
 
     @property
     def total_redeemed(self):
-        amount = TacoLedger.objects.filter(giver=self.user.unique_id, receiver=settings.SLACK_BOT_ID).aggregate(Sum('amount'))
+        qs = TacoLedger.objects.filter(giver=self.user.unique_id, receiver=settings.SLACK_BOT_ID)
+        if self._team:
+            qs = qs.filter(team=self._team)
+        amount = qs.aggregate(Sum('amount'))
         return amount['amount__sum'] if amount.get('amount__sum') else 0
 
     @property
@@ -53,28 +70,33 @@ class TacoBank(models.Model):
 
     @property
     def total_purchases(self):
-        amount = TacoLedger.objects.filter(giver=self.user.unique_id,
-                                           receiver=settings.SLACK_BOT_ID,
-                                           ).count()
+        qs = TacoLedger.objects.filter(giver=self.user.unique_id, receiver=settings.SLACK_BOT_ID)
+        if self._team:
+            qs = qs.filter(team=self._team)
+        amount = qs.count()
         return amount if amount else 0
 
     @property
     def total_purchases_curr_month(self):
         today = datetime.datetime.now()
-        amount = TacoLedger.objects.filter(giver=self.user.unique_id,
-                                           receiver=settings.SLACK_BOT_ID,
-                                           timestamp__year=today.year,
-                                           timestamp__month=today.month
-                                           ).count()
+        qs = TacoLedger.objects.filter(giver=self.user.unique_id,
+                                       receiver=settings.SLACK_BOT_ID,
+                                       timestamp__year=today.year,
+                                       timestamp__month=today.month)
+        if self._team:
+            qs = qs.filter(team=self._team)
+        amount = qs.count()
         return amount if amount else 0
 
     @property
     def total_purchases_today(self):
         today = datetime.datetime.now()
-        amount = TacoLedger.objects.filter(giver=self.user.unique_id,
-                                           receiver=settings.SLACK_BOT_ID,
-                                           timestamp__year=today.year,
-                                           timestamp__month=today.month,
-                                           timestamp__day=today.day
-                                           ).count()
+        qs = TacoLedger.objects.filter(giver=self.user.unique_id,
+                                       receiver=settings.SLACK_BOT_ID,
+                                       timestamp__year=today.year,
+                                       timestamp__month=today.month,
+                                       timestamp__day=today.day)
+        if self._team:
+            qs = qs.filter(team=self._team)
+        amount = qs.count()
         return amount if amount else 0
