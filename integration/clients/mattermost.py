@@ -3,7 +3,7 @@ from integration.clients.base import BaseClient
 from ledger.models import TacoLedger, TacoBank
 from django.conf import settings
 from django.db.models import Sum
-from datetime import datetime
+from datetime import date
 from mattermostdriver import Driver
 import asyncio
 import json
@@ -90,7 +90,7 @@ class Client(BaseClient):
     def format_balance(self, sender_id, team):
         given_today = TacoLedger.objects.filter(
             giver=sender_id, team=team,
-            timestamp__date=datetime.now().date()
+            timestamp__date=date.today()
         ).aggregate(Sum('amount')).get('amount__sum', 0) or 0
         remaining = max(0, settings.TACO_DAILY_LIMIT - given_today)
         user = TeamUser.objects.filter(team=team, user_team_id=sender_id).first()

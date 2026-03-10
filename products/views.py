@@ -58,7 +58,6 @@ def checkout(request, product_id):
 
 
 def checkout_button(request, product_id):
-    print('CHECKOUT PRESSED')
     product = Product.objects.filter(id=product_id).first()
     user = request.user
     client = get_client(user.team_user.team)
@@ -72,11 +71,11 @@ def checkout_button(request, product_id):
         redeem_tacos({"user_id": request.user.unique_id, "product_name": product.name, "amount": product.price, "receiver_id": user.team_user.team.bot_user_id, "tacos": product.price, "giver_id": request.user.unique_id}, team=user.team_user.team)
         client.order_information(user.unique_id, settings.ORDER_CHANNEL, product.name, size)
         client.receipt(user.unique_id, product.name, product.price, total_tacos-product.price)
+        messages.success(request, f"Successfully purchased {product.name}!")
     else:
         messages.error(request, "Insufficient taco balance.")
         return render(request, 'products/checkout.html', context={'product': product})
     
-    print(f"PURCHASED SIZE: {purchased_size}")
     if purchased_size:
         size = ProductAttributeStock.objects.get(id=purchased_size)
         size.stock = size.stock - 1

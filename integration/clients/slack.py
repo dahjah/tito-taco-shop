@@ -7,8 +7,7 @@ from integration.clients.base import BaseClient
 from ledger.models import TacoLedger, TacoBank
 from django.conf import settings
 from django.db.models import Sum
-from datetime import datetime
-import functools
+from datetime import date
 import re
 
 EMOJI = f":{settings.EMOJI_NAME}"
@@ -28,7 +27,7 @@ class Client(BaseClient):
         self.app_token = getattr(settings, 'SLACK_APP_TOKEN', None)
 
     def get_users(self, exclude_bots=True, include_deleted=False):
-        res = self.client.users_list()
+        res = self.web_client.users_list()
         users = res['members']
         if not exclude_bots and include_deleted:
             return users
@@ -140,7 +139,7 @@ class Client(BaseClient):
     def format_balance(self, sender_id, team):
         given_today = TacoLedger.objects.filter(
             giver=sender_id, team=team,
-            timestamp__date=datetime.now().date()
+            timestamp__date=date.today()
         ).aggregate(Sum('amount')).get('amount__sum', 0) or 0
         remaining = max(0, settings.TACO_DAILY_LIMIT - given_today)
         user = TeamUser.objects.filter(team=team, user_team_id=sender_id).first()
