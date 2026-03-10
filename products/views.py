@@ -60,7 +60,22 @@ def checkout(request, product_id):
 def checkout_button(request, product_id):
     product = Product.objects.filter(id=product_id).first()
     user = request.user
-    client = get_client(user.team_user.team)
+    
+    try:
+        team = user.team_user.team
+    except AttributeError:
+        team = Team.objects.filter(team_id=getattr(settings, 'TEAM_ID', '')).first()
+        if not team:
+            # Fallback to legacy settings for older environments
+            team = Team(
+                team_id=getattr(settings, 'TEAM_ID', ''), 
+                name=getattr(settings, 'TEAM_NAME', ''), 
+                bot_access_token=getattr(settings, 'SLACK_BOT_TOKEN', ''),
+                chat_type='slack',
+                bot_user_id=getattr(settings, 'SLACK_BOT_ID', '')
+            )
+            
+    client = get_client(team)
     taco_bank = TacoBank.objects.filter(user=user)
     total_tacos = taco_bank.first().total_tacos
     purchased_size = request.GET.get('size')
@@ -68,8 +83,15 @@ def checkout_button(request, product_id):
     if purchased_size:
         size = ProductAttributeStock.objects.get(id=purchased_size).attribute.value
     if total_tacos >= product.price:
-        redeem_tacos({"user_id": request.user.unique_id, "product_name": product.name, "amount": product.price, "receiver_id": user.team_user.team.bot_user_id, "tacos": product.price, "giver_id": request.user.unique_id}, team=user.team_user.team)
-        client.order_information(user.unique_id, settings.ORDER_CHANNEL, product.name, size)
+        redeem_tacos({
+            "user_id": request.user.unique_id, 
+            "product_name": product.name, 
+            "amount": product.price, 
+            "receiver_id": team.bot_user_id, 
+            "tacos": product.price, 
+            "giver_id": request.user.unique_id
+        }, team=team)
+        client.order_information(user.unique_id, getattr(settings, 'ORDER_CHANNEL', ''), product.name, size)
         client.receipt(user.unique_id, product.name, product.price, total_tacos-product.price)
         messages.success(request, f"Successfully purchased {product.name}!")
     else:
