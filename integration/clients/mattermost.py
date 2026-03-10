@@ -29,9 +29,7 @@ class Client(BaseClient):
         usernames = re.findall(r'@([a-zA-Z0-9_\-\.]+)', text)
         recipients = []
         for username in usernames:
-            # Look up Mattermost user ID by username (email prefix or stored detail)
-            # In a real app we might query the Mattermost API docs for this, 
-            # but for now we look up the TeamUser
+
             user_list = self.driver.users.get_users(params={'usernames': username})
             if user_list:
                 recipients.append(user_list[0]['id'])
