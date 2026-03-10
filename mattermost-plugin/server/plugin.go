@@ -111,7 +111,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		}
 
 		// Forward the text payload to Django
-		token := "" // Note: typically we would fetch the bot token from KV store here, skipped for brevity in example
+		token := "" // TODO: fetching the bot token from KV store here for proper auth verification when this goes public. Skipped for brevity in this example.
 		payload := fmt.Sprintf("team_id=mattermost&token=%s&command=/taco&text=%s&user_id=%s&channel_id=%s", 
 			token, 
 			strings.TrimSpace(strings.TrimPrefix(args.Command, "/taco")), 
