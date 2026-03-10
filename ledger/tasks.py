@@ -74,7 +74,7 @@ def redeem_tacos(data, team=None):
     if bank_account.total_tacos >= item.price:
         TacoLedger.objects.create(
             giver=data.get('user_id'),
-            receiver=settings.SLACK_BOT_ID,
+            receiver=team.bot_user_id if team else settings.SLACK_BOT_ID,
             amount=data.get('amount'),
             team=team
         )

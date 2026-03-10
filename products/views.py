@@ -69,7 +69,7 @@ def checkout_button(request, product_id):
     if purchased_size:
         size = ProductAttributeStock.objects.get(id=purchased_size).attribute.value
     if total_tacos >= product.price:
-        redeem_tacos({"user_id": request.user.unique_id, "product_name": product.name, "amount": product.price, "receiver_id": settings.SLACK_BOT_ID, "tacos": product.price, "giver_id": request.user.unique_id}, team=user.team_user.team)
+        redeem_tacos({"user_id": request.user.unique_id, "product_name": product.name, "amount": product.price, "receiver_id": user.team_user.team.bot_user_id, "tacos": product.price, "giver_id": request.user.unique_id}, team=user.team_user.team)
         client.order_information(user.unique_id, settings.ORDER_CHANNEL, product.name, size)
         client.receipt(user.unique_id, product.name, product.price, total_tacos-product.price)
     else:

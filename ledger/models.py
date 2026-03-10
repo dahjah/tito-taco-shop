@@ -40,8 +40,12 @@ class TacoBank(models.Model):
             return None
 
     @property
+    def _bot_id(self):
+        return self._team.bot_user_id if self._team else settings.SLACK_BOT_ID
+
+    @property
     def total_given(self):
-        qs = TacoLedger.objects.filter(~Q(receiver=settings.SLACK_BOT_ID), giver=self.user.unique_id)
+        qs = TacoLedger.objects.filter(~Q(receiver=self._bot_id), giver=self.user.unique_id)
         if self._team:
             qs = qs.filter(team=self._team)
         amount = qs.aggregate(Sum('amount'))
@@ -57,7 +61,7 @@ class TacoBank(models.Model):
 
     @property
     def total_redeemed(self):
-        qs = TacoLedger.objects.filter(giver=self.user.unique_id, receiver=settings.SLACK_BOT_ID)
+        qs = TacoLedger.objects.filter(giver=self.user.unique_id, receiver=self._bot_id)
         if self._team:
             qs = qs.filter(team=self._team)
         amount = qs.aggregate(Sum('amount'))
@@ -70,7 +74,7 @@ class TacoBank(models.Model):
 
     @property
     def total_purchases(self):
-        qs = TacoLedger.objects.filter(giver=self.user.unique_id, receiver=settings.SLACK_BOT_ID)
+        qs = TacoLedger.objects.filter(giver=self.user.unique_id, receiver=self._bot_id)
         if self._team:
             qs = qs.filter(team=self._team)
         amount = qs.count()
@@ -80,7 +84,7 @@ class TacoBank(models.Model):
     def total_purchases_curr_month(self):
         today = datetime.datetime.now()
         qs = TacoLedger.objects.filter(giver=self.user.unique_id,
-                                       receiver=settings.SLACK_BOT_ID,
+                                       receiver=self._bot_id,
                                        timestamp__year=today.year,
                                        timestamp__month=today.month)
         if self._team:
@@ -92,7 +96,7 @@ class TacoBank(models.Model):
     def total_purchases_today(self):
         today = datetime.datetime.now()
         qs = TacoLedger.objects.filter(giver=self.user.unique_id,
-                                       receiver=settings.SLACK_BOT_ID,
+                                       receiver=self._bot_id,
                                        timestamp__year=today.year,
                                        timestamp__month=today.month,
                                        timestamp__day=today.day)
