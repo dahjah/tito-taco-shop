@@ -32,9 +32,35 @@ jobs:
       - name: Build Plugin
         run: make build
         
+      - name: Get Plugin Version
+        id: get_version
+        run: |
+          VERSION=$(grep -Po '(?<="version": ")[^"]*' plugin.json)
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Check if Release Exists
+        id: check_release
+        run: |
+          if git ls-remote --tags origin refs/tags/${{ steps.get_version.outputs.version }} | grep -q ${{ steps.get_version.outputs.version }}; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Create Release
+        if: github.ref == 'refs/heads/master' && steps.check_release.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          files: mattermost-plugin/dist/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Upload Plugin Artifact
+        if: github.ref != 'refs/heads/master' || steps.check_release.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: tito-taco-shop-mattermost-plugin
+          name: tito-taco-shop-mattermost-plugin-${{ steps.get_version.outputs.version }}
           path: mattermost-plugin/dist/*.tar.gz
           retention-days: 14
